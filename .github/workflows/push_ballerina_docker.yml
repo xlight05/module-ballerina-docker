@@ -1,0 +1,45 @@
+name: Push Ballerina Docker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ballerina:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.BAL_DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.BAL_DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Prep Ballerina Pack
+        run: |
+          cd base/docker
+          wget -nv https://dist.ballerina.io/downloads/2201.5.5/ballerina-2201.5.5-swan-lake.zip
+          unzip -qq ballerina-2201.5.5-swan-lake.zip
+          mv ballerina-2201.5.5-swan-lake/distributions/ballerina-2201.5.5/ ballerina-2201.5.5
+          rm -rf ballerina-2201.5.5-swan-lake
+          zip -r  ballerina-2201.5.5.zip ballerina-2201.5.5
+          rm -rf ballerina-2201.5.5
+
+      - name: Build and push 
+        uses: docker/build-push-action@v3
+        with:
+          context: ./base/docker
+          file: ./base/docker/Dockerfile
+          build-args: |
+            BALLERINA_DIST=ballerina-2201.5.5.zip
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_NAME }}/ballerina:2201.5.5
+
